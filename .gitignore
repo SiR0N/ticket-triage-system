@@ -1,0 +1,29 @@
+# Entorno Virtual Python
+venv/
+env/
+ENV/
+
+# Caché y archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Variables de entorno y llaves secretas (API keys)
+.env
+.env.local
+
+# Configuración de entorno de desarrollo e IDEs
+.vscode/
+.idea/
+*.swp
+
+# Archivos temporales y de logs
+*.log
+.pytest_cache/
+
+# Base de datos local (evitar subir SQLite a Git)
+data/*.db
+*.sqlite3
+
+# Compilación y caché de Reflex
+.web/
