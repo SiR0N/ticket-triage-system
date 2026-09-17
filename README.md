@@ -76,32 +76,11 @@ You can run this application either using **Docker** (recommended) or **Locally*
    The application will be available at `http://127.0.0.1:8000`.
 
 ---
-### API Endpoints
-
-- **POST /triage**
-  - **Description**: Submit an incident for triage.
-  - **Request Body:**
-    ```json
-    {
-      "provider": "local",  // or "externo"
-      "description": "Description of the incident"
-    }
-    ```
-  - **Response:**
-    ```json
-    {
-      "category": "string",
-      "urgency": "string",
-      "summary": "string",
-      "department": "string",
-      "reasoning": "string"
-    }
-    ```
 
 ### Example Usage
 To triage an incident via curl:
 ```bash
-curl -X POST "http://127.0.0.1:8000/triage" -H "Content-Type: application/json" -d '{"provider": "local", "description": "Network connectivity issue in the office."}'
+curl -X POST "http://127.0.0.1:8000//api/v1/triage" -H "Content-Type: application/json" -d '{"provider": "local", "description": "Network connectivity issue in the office."}'
 ```
 
 ---
