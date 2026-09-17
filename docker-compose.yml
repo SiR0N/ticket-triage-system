@@ -1,0 +1,45 @@
+services:
+  # ─── SERVICIO BACKEND (FastAPI + Modelos LLM) ────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: triage_backend
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    volumes:
+      # Mantiene la base de datos SQLite (data/incidencias.db) guardada en local
+      - ./data:/app/data
+      # Mantiene los registros de logs (logs/app.log) legibles desde local
+      - ./logs:/app/logs
+      # Comparte la caché local de HuggingFace para no volver a descargar los modelos
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    restart: unless-stopped
+    networks:
+      - triage_network
+
+  # ─── SERVICIO FRONTEND (Reflex UI) ───────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: triage_frontend
+    ports:
+      - "3000:3000"
+      - "8002:8002"
+    environment:
+      - API_URL=http://backend:8000/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - triage_network
+
+# Red interna de comunicación entre contenedores
+networks:
+  triage_network:
+    driver: bridge

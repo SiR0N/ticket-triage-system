@@ -1,9 +1,8 @@
-# state/main_state.py
 from typing import Any, Dict, List
 import httpx
 import reflex as rx
 from ticket_triage_ui.config import API_URL, DEPT_OPTIONS, PROVIDER_OPTIONS, URGENCY_OPTIONS
-from src.models.schemas import ProviderEnum, TicketRequest
+from ticket_triage_ui.models.schemas import ProviderEnum, TicketRequest
 
 
 class State(rx.State):
@@ -15,7 +14,7 @@ class State(rx.State):
     login_password: str = ""
     is_authenticated: bool = False
     user_first_name: str = "Usuario" 
-    user_last_name: str = ""         
+    user_last_name: str = "" 
 
     # Triaje Form
     description: str = ""
@@ -33,7 +32,7 @@ class State(rx.State):
     tokens: int = 0
     provider: str = ""
 
-    # Historial y Admin
+    # Historial y Admin Base Data
     user_tickets: List[Dict[str, Any]] = []
     active_tab: str = "report"
     total_tickets: int = 0
@@ -44,12 +43,135 @@ class State(rx.State):
     edit_depts: Dict[str, str] = {}
     edit_urgencies: Dict[str, str] = {}
 
+    # --- FILTRADO Y COMPARATIVA MULTI-PROVEEDOR ---
+    selected_providers: List[str] = []
+
+    def toggle_provider_filter(self, prov: str):
+        """Añade o quita un proveedor de la lista de comparación."""
+        if prov in self.selected_providers:
+            self.selected_providers = [p for p in self.selected_providers if p != prov]
+        else:
+            self.selected_providers = [*self.selected_providers, prov]
+
+    def clear_provider_filters(self):
+        """Restablece el filtro para seleccionar todos los proveedores."""
+        self.selected_providers = []
+
+    # --- PROPIEDADES COMPUTADAS REACTIVAS (@rx.var) ---
+    @rx.var
+    def filtered_tickets(self) -> List[Dict[str, Any]]:
+        """Tickets filtrados según la selección actual de proveedores."""
+        if not self.selected_providers:
+            return self.tickets
+        return [t for t in self.tickets if str(t.get("provider", "")).lower() in [p.lower() for p in self.selected_providers]]
+
+    @rx.var
+    def stat_total_tickets(self) -> int:
+        return len(self.filtered_tickets)
+
+    @rx.var
+    def stat_avg_latency(self) -> float:
+        if not self.filtered_tickets:
+            return 0.0
+        latencies = [float(t.get("latency", 0.0)) for t in self.filtered_tickets]
+        return round(sum(latencies) / len(latencies), 2)
+
+    @rx.var
+    def stat_avg_tokens(self) -> int:
+        if not self.filtered_tickets:
+            return 0
+        tokens_list = [int(t.get("tokens_consumed", 0)) for t in self.filtered_tickets]
+        return int(sum(tokens_list) / len(tokens_list))
+
+    @rx.var
+    def stat_top_urgency(self) -> str:
+        if not self.filtered_tickets:
+            return "N/A"
+        counts: Dict[str, int] = {}
+        for t in self.filtered_tickets:
+            urg = str(t.get("urgency", "N/A"))
+            counts[urg] = counts.get(urg, 0) + 1
+        return max(counts, key=counts.get) if counts else "N/A"
+
+    # Data para Recharts: Comparativa Latencia/Tokens por Proveedor
+    @rx.var
+    def chart_provider_comparison(self) -> List[Dict[str, Any]]:
+        target_tickets = self.filtered_tickets
+        if not target_tickets:
+            return []
+
+        grouped: Dict[str, List[Dict[str, Any]]] = {}
+        for t in target_tickets:
+            p = str(t.get("provider", "desconocido")).upper()
+            grouped.setdefault(p, []).append(t)
+
+        result = []
+        for prov_name, items in grouped.items():
+            avg_lat = sum(float(x.get("latency", 0.0)) for x in items) / len(items)
+            avg_tok = sum(int(x.get("tokens_consumed", 0)) for x in items) / len(items)
+            result.append({
+                "provider": prov_name,
+                "latencia": round(avg_lat, 2),
+                "tokens": int(avg_tok),
+                "total": len(items)
+            })
+        return result
+
+    # Data para Recharts: Distribución por Departamentos
+    @rx.var
+    def chart_department_distribution(self) -> List[Dict[str, Any]]:
+        if not self.filtered_tickets:
+            return []
+        counts: Dict[str, int] = {}
+        for t in self.filtered_tickets:
+            dept = str(t.get("department_name", "Sin asignar"))
+            counts[dept] = counts.get(dept, 0) + 1
+        return [{"name": dept, "value": count} for dept, count in counts.items()]
+
+    # --- CONTROLES DE PAGINACIÓN ---
+    page: int = 1
+    items_per_page: int = 10  # Por defecto muestra 10 tickets por página
+
+    def next_page(self):
+        if self.page < self.total_pages:
+            self.page += 1
+
+    def prev_page(self):
+        if self.page > 1:
+            self.page -= 1
+
+    def set_items_per_page(self, val: str):
+        self.items_per_page = int(val)
+        self.page = 1
+
+    @rx.var
+    def total_pages(self) -> int:
+        total = len(self.filtered_tickets)
+        if total == 0:
+            return 1
+        return (total + self.items_per_page - 1) // self.items_per_page
+
+    @rx.var
+    def paginated_tickets(self) -> List[Dict[str, Any]]:
+        """Devuelve los tickets de la página actual."""
+        start = (self.page - 1) * self.items_per_page
+        end = start + self.items_per_page
+        return self.filtered_tickets[start:end]
+
     # --- MÉTODOS Y ACCIONES ---
     def set_login_username(self, val: str): self.login_username = val
     def set_login_password(self, val: str): self.login_password = val
     def set_description(self, val: str): self.description = val
     def set_selected_provider(self, val: str): self.selected_provider = val
-    def set_active_tab(self, val: str): self.active_tab = val
+    async def set_active_tab(self, val: str):
+        """Cambia de pestaña y refresca los datos de admin si entra en la vista correspondiente."""
+        self.active_tab = val
+        
+        # Si la pestaña activa es la de estadísticas/admin y el usuario tiene rol ADMIN, cargamos los datos frescos
+        if val == "admin" and self.user_role == "ADMIN":  # Cambia "stats" por el valor exacto de la pestaña si usas otro nombre
+            async for event in self.load_admin_data():
+                yield event
+    
     def set_ticket_dept(self, ticket_id: Any, val: str):
         str_id = str(ticket_id)
         self.edit_depts = {**self.edit_depts, str_id: val}

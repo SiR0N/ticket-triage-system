@@ -18,17 +18,23 @@ def process_triage_with_llm(ticket_request: TicketRequest):
     total_tokens = 0
     triage_output = None
 
+    # Proveedores que se ejecutan localmente en la máquina
+    valid_local_providers = [
+        ProviderEnum.LOCAL.value,         # "local" (Ollama)
+        ProviderEnum.HF_TRANSFORMERS.value # "hf_local" (Transformers)
+    ]
+
+    # Proveedores que consumen API remota
     valid_external_providers = [
-        ProviderEnum.GEMINI.value, 
-        ProviderEnum.HF_API.value, 
-        ProviderEnum.HF_TRANSFORMERS.value
+        ProviderEnum.GEMINI.value,        # "gemini"
+        ProviderEnum.HF_API.value         # "hf_api"
     ]
 
     while retries < 2:
         start_time = time.time()
         
-        if provider_str == ProviderEnum.LOCAL.value:
-            response, latency, tokens = local_llm.process(current_prompt, validation_error=validation_error)
+        if provider_str in valid_local_providers:
+            response, latency, tokens = local_llm.process(current_prompt, provider_str, validation_error=validation_error)
         elif provider_str in valid_external_providers:
             response, latency, tokens = external_llm.process(prompt=current_prompt, provider=provider_str, validation_error=validation_error)
         else:

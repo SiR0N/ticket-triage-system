@@ -141,14 +141,13 @@ def process_hf_local(prompt: str, model_id: str = "Qwen/Qwen2.5-0.5B-Instruct") 
 def process(prompt: str, provider: str = "gemini", validation_error: str = None) -> tuple[str, float, int]:
     start_time = time.time()
 
-    if provider in ["gemini", "externo"]:
+    provider_clean = provider.lower()
+    if provider_clean == "gemini":
         response_text, tokens = process_gemini(prompt)
-    elif provider == "hf_api":
+    elif provider_clean == "hf_api":
         response_text, tokens = process_hf_api(prompt)
-    elif provider == "hf_local":
-        response_text, tokens = process_hf_local(prompt)
     else:
-        raise ValueError(f"Proveedor '{provider}' no soportado.")
+        raise ValueError(f"Proveedor externo '{provider}' no soportado.")
 
     latency = time.time() - start_time
     return response_text, latency, tokens

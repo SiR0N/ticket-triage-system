@@ -1,246 +1,141 @@
-# Proyecto de Triage Asistido por LLM
+# Ticket Triage System
 
-## Descripción
-Este proyecto es una solución para procesar y clasificar reportes de incidencias utilizando un motor de triaje asistido por LLMs. La solución incluye una API REST desarrollada con FastAPI y un dashboard interactivo creado con Streamlit.
+The Ticket Triage System is a web application designed to categorize and triage incidents reported by users. It uses Large Language Models (LLMs) to determine the category, urgency, department, and summary of each incident.
 
-## Requisitos
-- Python 3.8+
-- FastAPI
-- Uvicorn
-- Pydantic
-- Streamlit
-- Requests
-- Ollama
+## Features
 
-## Instalación
-1. Clona el repositorio:
-    ```bash
-    git clone https://github.com/tu-repo/proyecto_triage.git
-    cd proyecto_triage
+- **Incident Categorization**: Automatically categorize incidents into predefined categories.
+- **Urgency Assessment**: Determine the urgency level of each incident.
+- **Department Assignment**: Assign incidents to the appropriate department.
+- **Summary Generation**: Generate a concise summary of the incident.
+- **Reasoning Explanation**: Provide reasoning for the categorization and assignment decisions.
+
+---
+
+## Deployment Options
+
+You can run this application either using **Docker** (recommended) or **Locally** using a Python virtual environment.
+
+### Option A: Running with Docker (Recommended)
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/SiR0N/ticket-triage-system.git
+   cd ticket-triage-system
+   ```
+
+2. **Configure Environment Variables**
+   Make sure you have your `.env` file properly set up at the root of the project with your configurations and model selections.
+
+3. **Download Required Models**
+   Run the environment setup script to automatically download the models specified in your `.env`:
+   ```bash
+   python scripts/setup_environment.py
+   ```
+
+4. **Build and Run with Docker Compose**
+   ```bash
+   docker compose up --build
+   ```
+
+   Once running, you can access:
+   - **Frontend UI (Reflex)**: `http://localhost:8002`
+   - **Backend API Docs (FastAPI)**: `http://localhost:8000/docs`
+
+---
+
+### Option B: Running Locally (Without Docker)
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/SiR0N/ticket-triage-system.git
+   cd ticket-triage-system
+   ```
+
+2. **Set Up a Virtual Environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+
+3. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+
+   ```
+4. **Download Required Models**
+   Run the setup script to pull the necessary models based on your `.env`:
+   ```bash
+   python scripts/setup_environment.py
+   ```
+---
+
+## Usage
+
+### Local Script
+The `run_app_local` script is provided to run the application locally without using Docker.
+
+1. **Activate the Virtual Environment**
+   ```bash
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+
+2. **Execute the Script**
+   ```bash
+   python run_app_local.py
+   ```
+   The application will be available at `http://127.0.0.1:8000`.
+
+### API Endpoints
+
+- **POST /triage**
+  - **Description**: Submit an incident for triage.
+  - **Request Body:**
+    ```json
+    {
+      "provider": "local",  // or "externo"
+      "description": "Description of the incident"
+    }
+    ```
+  - **Response:**
+    ```json
+    {
+      "category": "string",
+      "urgency": "string",
+      "summary": "string",
+      "department": "string",
+      "reasoning": "string"
+    }
     ```
 
-2. Instala las dependencias:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Ejecución
-1. Inicia el servidor FastAPI:
-    ```bash
-    uvicorn src.main:app --reload
-    ```
-
-2. Inicia el dashboard Streamlit:
-    ```bash
-    streamlit run dashboard/app.py
-    ```
-
-## Pruebas
-Ejecuta las pruebas unitarias:
+### Example Usage
+To triage an incident via curl:
 ```bash
-pytest
+curl -X POST "http://127.0.0.1:8000/triage" -H "Content-Type: application/json" -d '{"provider": "local", "description": "Network connectivity issue in the office."}'
 ```
 
-## Contribución
-Contribuciones son bienvenidas. Por favor, crea un pull request con tus cambios.
-```
+---
 
-### 2. API y Type-Safety
+## Contributing
 
-#### src/models.py
+Contributions are welcome! Please follow these steps to contribute to the project:
 
-```python models.py
-from pydantic import BaseModel, Field
-from typing import Optional
+1. **Fork the Repository**
+2. **Create a Branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. **Make Your Changes**
+4. **Commit Your Changes**
+   ```bash
+   git commit -m "Add your feature description"
+   ```
+5. **Push to Your Branch**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+6. **Open a Pull Request**
 
-class Incident(BaseModel):
-    description: str = Field(..., description="Descripción de la incidencia")
-    provider: str = Field(..., description="Proveedor: 'local' o 'externo'")
+## License
 
-class IncidentResponse(BaseModel):
-    category: str = Field(..., description="Categoría de la incidencia")
-    urgency: str = Field(..., description="Nivel de urgencia")
-    summary: str = Field(..., description="Resumen de 10 palabras")
-    department: str = Field(..., description="Departamento asignado")
-    reasoning: str = Field(..., description="Razonamiento del LLM")
-```
-
-#### src/main.py
-
-```python src/main.py
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from src.models import Incident, IncidentResponse
-from src.services import local_llm, external_llm
-import time
-
-app = FastAPI()
-
-@app.post("/triage", response_model=IncidentResponse)
-async def triage_incident(incident: Incident):
-    start_time = time.time()
-    try:
-        if incident.provider == "local":
-            response = local_llm.process(incident.description)
-        elif incident.provider == "externo":
-            response = external_llm.process(incident.description)
-        else:
-            raise HTTPException(status_code=400, detail="Proveedor inválido")
-
-        end_time = time.time()
-        latency = end_time - start_time
-
-        return IncidentResponse(
-            category=response["category"],
-            urgency=response["urgency"],
-            summary=response["summary"],
-            department=response["department"],
-            reasoning=response["reasoning"]
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-```
-
-#### src/services/local_llm.py
-
-```python local_llm.py
-import ollama
-
-def process(description: str) -> dict:
-    # Implementar lógica para interactuar con el modelo local de Ollama
-    response = ollama.generate(prompt=description)
-    return parse_response(response)
-
-def parse_response(response: str) -> dict:
-    # Implementar lógica para parsear la respuesta y validarla con Pydantic
-    try:
-        # Ejemplo de respuesta:
-        # {"category": "Accidente", "urgency": "Alta", "summary": "Choque en Av. Principal", "department": "Transito", "reasoning": "La descripción indica un choque con varios vehículos involucrados."}
-        return {
-            "category": response["category"],
-            "urgency": response["urgency"],
-            "summary": response["summary"],
-            "department": response["department"],
-            "reasoning": response["reasoning"]
-        }
-    except Exception as e:
-        raise ValueError(f"Error en el formato de la respuesta: {str(e)}")
-```
-
-#### src/services/external_llm.py
-
-```python external_llm.py
-import requests
-
-def process(description: str) -> dict:
-    # Implementar lógica para interactuar con el modelo externo (ej. GPT/Gemini/Claude)
-    response = requests.post("https://api.provider.com/llm", json={"description": description})
-    response.raise_for_status()
-    return parse_response(response.json())
-
-def parse_response(response: dict) -> dict:
-    # Implementar lógica para parsear la respuesta y validarla con Pydantic
-    try:
-        # Ejemplo de respuesta:
-        # {"category": "Accidente", "urgency": "Alta", "summary": "Choque en Av. Principal", "department": "Transito", "reasoning": "La descripción indica un choque con varios vehículos involucrados."}
-        return {
-            "category": response["category"],
-            "urgency": response["urgency"],
-            "summary": response["summary"],
-            "department": response["department"],
-            "reasoning": response["reasoning"]
-        }
-    except Exception as e:
-        raise ValueError(f"Error en el formato de la respuesta: {str(e)}")
-```
-
-### 3. Prompt Engineering y Modelado de Salida
-
-#### src/prompts.py
-
-```python prompts.py
-def generate_prompt(description: str) -> str:
-    system_prompt = """
-    Eres un asistente que clasifica incidencias urbanas y razona sobre su urgencia utilizando el framework ReAct. 
-    Para cada incidencia, primero razona paso a paso (Chain-of-Thought) sobre la clasificación y luego proporciona una respuesta en formato JSON.
-    Instrucciones:
-    - Ignora el género, origen, raza o barrio inferido en el texto de la incidencia.
-    - Genera una categoría, un nivel de urgencia, un resumen de 10 palabras y el departamento asignado.
-    - Proporciona un razonamiento detallado.
-    """
-    user_prompt = f"Incidencia: {description}"
-    return f"{system_prompt}\n{user_prompt}"
-```
-
-### 4. Interfaz Visual (Dashboard)
-
-#### dashboard/app.py
-
-```python app.py
-import streamlit as st
-import requests
-from src.models import Incident
-
-st.title("Dashboard de Triage de Incidencias")
-
-description = st.text_area("Descripción de la incidencia", height=150)
-provider = st.selectbox("Proveedor", ["local", "externo"])
-
-if st.button("Procesar"):
-    if description:
-        incident = Incident(description=description, provider=provider)
-        response = requests.post("http://localhost:8000/triage", json=incident.dict())
-        if response.status_code == 200:
-            data = response.json()
-            st.write("Categoría:", data["category"])
-            st.write("Urgencia:", data["urgency"])
-            st.write("Resumen:", data["summary"])
-            st.write("Departamento:", data["department"])
-            st.write("Razonamiento:", data["reasoning"])
-        else:
-            st.error(f"Error: {response.text}")
-    else:
-        st.error("Por favor, ingresa una descripción de la incidencia.")
-```
-
-### 5. Testing
-
-#### tests/test_main.py
-
-```python test_main.py
-from fastapi.testclient import TestClient
-from src.main import app
-from src.models import Incident
-
-client = TestClient(app)
-
-def test_read_main():
-    response = client.post("/triage", json={"description": "Choque en Av. Principal", "provider": "local"})
-    assert response.status_code == 200
-    data = response.json()
-    assert "category" in data
-    assert "urgency" in data
-    assert "summary" in data
-    assert "department" in data
-    assert "reasoning" in data
-
-def test_invalid_provider():
-    response = client.post("/triage", json={"description": "Choque en Av. Principal", "provider": "invalid"})
-    assert response.status_code == 400
-```
-
-#### tests/test_models.py
-
-```python test_models.py
-from src.models import Incident
-
-def test_valid_incident():
-    incident = Incident(description="Choque en Av. Principal", provider="local")
-    assert incident.description == "Choque en Av. Principal"
-    assert incident.provider == "local"
-
-def test_invalid_incident():
-    try:
-        Incident(description="Choque en Av. Principal", provider="invalid")
-    except ValueError as e:
-        assert str(e) == "1 validation error for Incident\nprovider\n  unexpected value; permitted: 'local', 'externo' (type=value_error.const; given=invalid; permitted=['local', 'externo'])"
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

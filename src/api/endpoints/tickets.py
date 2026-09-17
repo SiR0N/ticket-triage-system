@@ -45,25 +45,46 @@ async def triage_ticket(
 # 🔒 2. GET /tickets (Ver Listado de Tickets)
 # SOLO PERMITIDO PARA ADMINISTRADORES
 # -------------------------------------------------------------------
+# src/api/endpoints/tickets.py
+
 @router.get("/tickets", response_model=List[TicketResponseDB])
 def get_tickets(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(require_admin)  # Requiere JWT y Rol ADMIN
+    current_user: UserModel = Depends(require_admin)
 ):
     logger.info(f"📥 [GET /tickets] Admin ID: {current_user.id} solicitando listado completo de tickets.")
     tickets = ticket_crud.fetch_all_tickets(db, skip, limit)
-    logger.info(f"📤 [DB Success] Se recuperaron {len(tickets)} tickets globales.")
+    logger.info(f"📤 [DB Success] Se recuperaron {len(tickets)} tickets globales de la base de datos.")
     
-    return [
+    response_payload = [
         TicketResponseDB(
-            id=t.id, description=t.description, provider=t.provider,
-            urgency=t.urgency, summary=t.summary, department_name=dept_name,
-            thought_process=t.thought_process, latency=t.latency,
-            tokens_consumed=t.tokens_consumed, created_at=t.created_at
-        ) for t, dept_name in tickets
+            id=t.id, 
+            description=t.description, 
+            provider=t.provider,
+            urgency=t.urgency, 
+            summary=t.summary, 
+            department_name=dept_name or "Sin asignar",
+            user_email=user_email if user_email else "Not Found",
+            thought_process=t.thought_process, 
+            latency=t.latency,
+            tokens_consumed=t.tokens_consumed, 
+            created_at=t.created_at
+        ) for t, dept_name, user_email in tickets
     ]
+
+    # 📊 LOG DE CONTROL ANTES DEL RETURN
+    if response_payload:
+        sample = response_payload[0]
+        logger.info(
+            f"🚀 [GET /tickets OUTPUT] Enviando a Reflex {len(response_payload)} objetos. "
+            f"Muestra (Ticket ID {sample.id}): user_email='{sample.user_email}', dept='{sample.department_name}'"
+        )
+    else:
+        logger.warning("⚠️ [GET /tickets OUTPUT] El listado a enviar está vacío.")
+
+    return response_payload
 
 
 # -------------------------------------------------------------------

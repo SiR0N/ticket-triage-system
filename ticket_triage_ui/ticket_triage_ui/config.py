@@ -1,7 +1,9 @@
 # config.py
-from src.models.schemas import DepartmentEnum, ProviderEnum, UrgencyEnum
 
-API_URL = "http://localhost:8000/api/v1"
+from ticket_triage_ui.models.schemas import DepartmentEnum, ProviderEnum, UrgencyEnum
+import os
+
+API_URL = os.getenv("API_URL", "http://backend:8000/api/v1")
 
 PROVIDER_OPTIONS = [p.value for p in ProviderEnum]
 DEPT_OPTIONS = [d.value for d in DepartmentEnum]

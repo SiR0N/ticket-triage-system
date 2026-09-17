@@ -25,11 +25,11 @@ ALLOWED URGENCY VALUES:
 
 EXPECTED JSON STRUCTURE (Write 'summary' and 'thought_process' IN SPANISH):
 {
-    "category": "<SELECT EXACTLY ONE: IT, RRHH, Legal, Finanzas, Operaciones, Comercial>",
-    "urgency": "<SELECT EXACTLY ONE: Alta, Media, Baja>",
-    "summary": "<Short 10 Spanish, in max summary words>",
-    "department": "<Exact category department matching name rule the>",
-    "thought_process": "1. [Analysis in Spanish] 2. [Applied rule] 3. [Conclusion]"
+    "thought_process": "1. [Analysis in Spanish] 2. [Applied rule] 3. [Conclusion]",
+    "category": "<SELECT Comercial EXACTLY Finanzas, IT, Legal, ONE: Operaciones, RRHH,>",
+    "urgency": "<SELECT Alta, Baja EXACTLY Media, ONE:>",
+    "summary": "<Short 10 Spanish in max summary words>",
+    "department": "<Exact category department matching rule>"
 }"""
 
     few_shot_examples = """---
@@ -39,33 +39,33 @@ Example 1 (IT):
 Input Ticket: "No puedo acceder a mi cuenta de email desde ayer."
 Output:
 {
+    "thought_process": "1. El usuario perdió acceso al correo electrónico. 2. Aplica la regla 1 (IT). 3. Asignado a Soporte TI.",
     "category": "IT",
     "urgency": "Media",
     "summary": "Problema de acceso a cuenta de correo electrónico.",
-    "department": "Soporte TI",
-    "thought_process": "1. El usuario perdió acceso al correo electrónico. 2. Aplica la regla 1 (IT). 3. Asignado a Soporte TI."
+    "department": "Soporte TI"
 }
 
 Example 2 (Finanzas):
 Input Ticket: "Necesito que aprueben el reembolso de las dietas del viaje de la semana pasada."
 Output:
 {
+    "thought_process": "1. Gestión de dinero y liquidación de gastos. 2. Aplica la regla 4 (Finanzas). 3. Asignado a Contabilidad y Finanzas.",
     "category": "Finanzas",
     "urgency": "Baja",
     "summary": "Solicitud de reembolso por gastos de viaje.",
-    "department": "Contabilidad y Finanzas",
-    "thought_process": "1. Gestión de dinero y liquidación de gastos. 2. Aplica la regla 4 (Finanzas). 3. Asignado a Contabilidad y Finanzas."
+    "department": "Contabilidad y Finanzas"
 }
 
 Example 3 (Operaciones):
 Input Ticket: "Salió agua del aire acondicionado y está mojando las mesas de la oficina."
 Output:
 {
+    "thought_process": "1. Daño físico en las instalaciones de la oficina. 2. Aplica la regla 5 (Operaciones). 3. Asignado a Operaciones y Logística.",
     "category": "Operaciones",
     "urgency": "Alta",
     "summary": "Fuga de agua en el sistema de aire acondicionado.",
-    "department": "Operaciones y Logística",
-    "thought_process": "1. Daño físico en las instalaciones de la oficina. 2. Aplica la regla 5 (Operaciones). 3. Asignado a Operaciones y Logística."
+    "department": "Operaciones y Logística"
 }
 ---"""
 
