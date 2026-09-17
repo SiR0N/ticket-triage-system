@@ -68,24 +68,14 @@ You can run this application either using **Docker** (recommended) or **Locally*
    ```bash
    python scripts/setup_environment.py
    ```
----
-
-## Usage
-
-### Local Script
-The `run_app_local` script is provided to run the application locally without using Docker.
-
-1. **Activate the Virtual Environment**
+5. **Execute the Script**
+   The `run_app_local` script is provided to run the application locally without using Docker.
    ```bash
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-
-2. **Execute the Script**
-   ```bash
-   python run_app_local.py
+   ./run_app_local.sh
    ```
    The application will be available at `http://127.0.0.1:8000`.
 
+---
 ### API Endpoints
 
 - **POST /triage**
